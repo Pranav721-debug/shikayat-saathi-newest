@@ -44,16 +44,28 @@ window.selectLanguage = (lang) => {
 
 // ------------------ Google TTS Speech (WORKS FOR ALL LANGUAGES) ------------------
 function speak(text, lang, callback = null) {
-  const ttsMap = {
-    hi: "hi-IN",
-    kn: "kn-IN",
-    ta: "ta-IN",
+  const langMap = {
+    hi: "hi",
+    kn: "kn",
+    ta: "ta",
     ur: "ur",
-    gu: "gu-IN",
-    bn: "bn-IN",
-    or: "or-IN",
-    raj: "hi-IN"
+    gu: "gu",
+    bn: "bn",
+    or: "or",
+    raj: "hi"
   };
+
+  const apiLang = langMap[lang] || "hi";
+  const url = `https://tts-api-cpve.onrender.com/tts?text=${encodeURIComponent(text)}&lang=${apiLang}`;
+
+  const audio = new Audio(url);
+  audio.onended = () => callback && callback();
+  audio.play().catch((err) => {
+    console.error("TTS error:", err);
+    alert("Audio playback blocked. Tap screen and try again.");
+  });
+}
+
 
   const url =
     "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" +
@@ -180,3 +192,4 @@ window.trackComplaint = async () => {
     resultDiv.innerHTML = "❌ Error: " + e.message;
   }
 };
+
