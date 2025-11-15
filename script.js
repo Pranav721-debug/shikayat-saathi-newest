@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ---------------- Firebase Config ----------------
+// ---------------- Firebase ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyDJuz23DrqGN3i98yGvEp4uI99l0AED6rY",
   authDomain: "shikayat-saathi.firebaseapp.com",
@@ -15,10 +15,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ---------------- Text Prompts ----------------
+// ---------------- Prompts ----------------
 const prompts = {
   hi: ["कृपया अपनी समस्या बताएं", "कृपया अपने गांव और राज्य का नाम बताएं", "कृपया अपना नाम बताएं", "धन्यवाद, आपकी समस्या रिकॉर्ड कर ली गई है", "आपका सहायक", "बोलें"],
-  kn: ["ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ಹೇಳಿ", "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹಳ್ಳಿ ಮತ್ತು ರಾಜ್ಯದ ಹೆಸರನ್ನು ಹೇಳಿ", "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಹೇಳಿ", "ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ದಾಖಲಿಸಲಾಗಿದೆ", "ನಿಮ್ಮ ಸಹಾಯಕ", "ಮಾತನಾಡಿ"],
+  kn: ["ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ಹೇಳಿ", "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹಳ್ಳಿ ಮತ್ತು ರಾಜ್ಯದ ಹೆಸರನ್ನು ಹೇಳಿ", "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಹೇಳಿ", "ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ದಾಖಲಾಗಿರುತ್ತದೆ", "ನಿಮ್ಮ ಸಹಾಯಕ", "ಮಾತನಾಡಿ"],
   ta: ["தயவுசெய்து உங்கள் பிரச்சனையை கூறுங்கள்", "தயவுசெய்து உங்கள் கிராமம் மற்றும் மாநிலத்தின் பெயரை கூறுங்கள்", "தயவுசெய்து உங்கள் பெயரை கூறுங்கள்", "நன்றி, உங்கள் பிரச்சனை பதிவு செய்யப்பட்டுள்ளது", "உங்கள் உதவியாளர்", "பேசவும்"],
   ur: ["براہ کرم اپنی مسئلہ بتائیں", "براہ کرم اپنے گاؤں اور ریاست کا نام بتائیں", "براہ کرم اپنا نام بتائیں", "شکریہ، آپ کا مسئلہ ریکارڈ کر لیا گیا ہے", "آپ کا معاون", "بولیں"],
   gu: ["કૃપા કરીને તમારી સમસ્યા કહો", "તમારા ગામ અને રાજ્યનું નામ કહો", "તમારું નામ કહો", "આભાર, તમારી સમસ્યા નોંધાઈ ગઈ છે", "તમારો સહાયક", "બોલો"],
@@ -27,32 +27,40 @@ const prompts = {
   raj: ["कृपया थारी समस्स्या बतावो", "थारो गांव अर राज्य को नाम बोलो", "थारो नाम बतावो", "धन्यवाद, थारी समस्स्या रिकॉर्ड कर ली गई है", "थारो सहायक", "बोलो"]
 };
 
-const langMapTTS = {
-  hi: "hi", kn: "kn", ta: "ta",
-  ur: "ur", gu: "gu", bn: "bn",
-  or: "or", raj: "hi"
-};
-
-const recogLangMap = {
-  hi: "hi-IN", kn: "kn-IN", ta: "ta-IN",
-  ur: "ur-PK", gu: "gu-IN", bn: "bn-IN",
-  or: "or-IN", raj: "hi-IN"
+// ---------------- Language Maps ----------------
+const langMap = {
+  hi: "hi-IN",
+  kn: "kn-IN",
+  ta: "ta-IN",
+  ur: "ur-PK",
+  gu: "gu-IN",
+  bn: "bn-IN",
+  or: "or-IN",
+  raj: "hi-IN"
 };
 
 let currentLang = "hi";
 let step = 0;
 
-// ---------------- FIXED: Working TTS for all languages ----------------
+// ---------------- SAFE speechSynthesis ----------------
 function speak(text, lang, callback = null) {
-  const url =
-    `https://lingva.ml/api/v1/${langMapTTS[lang]}/en/speak?text=${encodeURIComponent(text)}`;
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = langMap[lang] || "hi-IN";
+  msg.rate = 1;
+  msg.pitch = 1;
+  msg.volume = 1;
 
-  const audio = new Audio(url);
-  audio.onended = () => callback && callback();
-  audio.play().catch(err => console.error("Audio Play Error:", err));
+  msg.onend = () => callback && callback();
+
+  // Make sure voices are loaded
+  if (speechSynthesis.getVoices().length === 0) {
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.speak(msg);
+  } else {
+    speechSynthesis.speak(msg);
+  }
 }
 
-// ---------------- Language Select ----------------
+// ---------------- Select Language ----------------
 window.selectLanguage = (lang) => {
   currentLang = lang;
   step = 0;
@@ -71,22 +79,22 @@ window.startRecognition = () => {
     return;
   }
 
-  const recognition = new webkitSpeechRecognition();
-  recognition.lang = recogLangMap[currentLang];
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+  const recog = new webkitSpeechRecognition();
+  recog.lang = langMap[currentLang];
+  recog.interimResults = false;
+  recog.maxAlternatives = 1;
 
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript.trim();
+  recog.onresult = (event) => {
+    const text = event.results[0][0].transcript.trim();
     const box = document.getElementById("resultText");
 
-    box.innerText += (box.innerText ? "\n" : "") + transcript;
+    box.innerText += (box.innerText ? "\n" : "") + text;
 
     step++;
 
     if (step < 3) {
       document.getElementById("stepText").innerText = prompts[currentLang][step];
-      speak(prompts[currentLang][step], currentLang, () => recognition.start());
+      speak(prompts[currentLang][step], currentLang, () => recog.start());
     } else {
       document.getElementById("stepText").innerText = prompts[currentLang][3];
       speak(prompts[currentLang][3], currentLang);
@@ -97,10 +105,7 @@ window.startRecognition = () => {
       const name = lines[2] || "";
 
       navigator.geolocation.getCurrentPosition(
-        pos => sendComplaintToFirebase(
-          name, village, problem,
-          pos.coords.latitude, pos.coords.longitude
-        ),
+        pos => sendComplaintToFirebase(name, village, problem, pos.coords.latitude, pos.coords.longitude),
         () => alert("Location denied. Complaint not recorded.")
       );
 
@@ -108,50 +113,51 @@ window.startRecognition = () => {
     }
   };
 
-  speak(prompts[currentLang][0], currentLang, () => recognition.start());
+  // speak first message then start mic
+  speak(prompts[currentLang][0], currentLang, () => recog.start());
 };
 
-// ---------------- Firebase Complaint Submit ----------------
+// ---------------- Firebase Submission ----------------
 window.sendComplaintToFirebase = async (name, village, problem, lat, long) => {
   try {
-    const docRef = await addDoc(collection(db, "complaints"), {
+    const ref = await addDoc(collection(db, "complaints"), {
       name, village, problem,
       status: "Received",
       location: { latitude: lat, longitude: long },
       timestamp: new Date()
     });
-    alert(`✅ Complaint Registered!\nComplaint ID: ${docRef.id}`);
+    alert("Complaint Registered!\nID: " + ref.id);
   } catch (e) {
-    alert("❌ Failed to submit: " + e.message);
+    alert("Error: " + e.message);
   }
 };
 
-// ---------------- Track Complaint ----------------
+// ---------------- Complaint Tracker ----------------
 window.trackComplaint = async () => {
   const id = document.getElementById("trackId").value.trim();
-  const div = document.getElementById("trackResult");
+  const box = document.getElementById("trackResult");
 
-  if (!id) return alert("Enter your complaint ID");
+  if (!id) return alert("Enter ID");
 
   try {
     const snap = await getDoc(doc(db, "complaints", id));
     if (!snap.exists()) {
-      div.innerHTML = "❌ No record found.";
+      box.innerHTML = "❌ Not found.";
       return;
     }
 
     const data = snap.data();
     const time = data.timestamp?.toDate().toLocaleString() || "Unknown";
 
-    div.innerHTML = `
-      <hr><strong>Complaint Details:</strong><br>
-      <strong>Name:</strong> ${data.name}<br>
-      <strong>Village:</strong> ${data.village}<br>
-      <strong>Problem:</strong> ${data.problem}<br>
-      <strong>Status:</strong> ${data.status}<br>
-      <strong>Filed At:</strong> ${time}<br>
+    box.innerHTML = `
+      <hr><b>Complaint Details:</b><br>
+      <b>Name:</b> ${data.name}<br>
+      <b>Village:</b> ${data.village}<br>
+      <b>Problem:</b> ${data.problem}<br>
+      <b>Status:</b> ${data.status}<br>
+      <b>Filed At:</b> ${time}<br>
     `;
   } catch (e) {
-    div.innerHTML = "❌ Error: " + e.message;
+    box.innerHTML = "❌ Error: " + e.message;
   }
 };
