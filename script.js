@@ -59,12 +59,12 @@ function getTTSUrl(text, lang) {
 
 // SPEAK TEXT
 function speakText(text, lang) {
-  const audioUrl = getTTSUrl(text, lang);
+  const ttsUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${voiceMap[lang]}`;
 
-  const audio = new Audio(audioUrl);
-  audio.onerror = () => console.log("TTS Error: ", audio.error);
-  audio.play().catch((err) => console.log("Audio Play Error: ", err));
+  const audio = new Audio(ttsUrl);
+  audio.play().catch(err => console.log("TTS Error:", err));
 }
+
 
 // TRACK COMPLAINT
 window.trackComplaint = function () {
@@ -82,3 +82,4 @@ window.trackComplaint = function () {
 
   speakText("आपकी शिकायत प्रक्रिया में है", selectedLang);
 };
+
