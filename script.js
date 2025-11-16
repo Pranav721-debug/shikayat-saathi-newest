@@ -151,7 +151,3 @@ window.trackComplaint = async () => {
     div.innerHTML = "❌ Error: " + e.message;
   }
 };
-
-
-
-
