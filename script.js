@@ -1,4 +1,4 @@
-// =============== Firebase ==================
+// ================= Firebase ==================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -15,31 +15,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// =============== PROMPTS ==================
+// =============== PROMPTS ======================
 const prompts = {
   hi: ["कृपया अपनी समस्या बताएं","कृपया अपने गांव और राज्य का नाम बताएं","कृपया अपना नाम बताएं","धन्यवाद, आपकी समस्या रिकॉर्ड कर ली गई है","आपका सहायक","बोलें"],
   kn: ["ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ಹೇಳಿ","ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹಳ್ಳಿ ಮತ್ತು ರಾಜ್ಯದ ಹೆಸರನ್ನು ಹೇಳಿ","ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಹೇಳಿ","ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ದಾಖಲಿಸಲಾಗಿದೆ","ನಿಮ್ಮ ಸಹಾಯಕ","ಮಾತನಾಡಿ"],
   ta: ["தயவுசெய்து உங்கள் பிரச்சனையை கூறுங்கள்","தயவுசெய்து உங்கள் கிராமம் மற்றும் மாநிலத்தின் பெயரை கூறுங்கள்","தயவுசெய்து உங்கள் பெயரை கூறுங்கள்","நன்றி, உங்கள் பிரச்சனை பதிவு செய்யப்பட்டுள்ளது","உங்கள் உதவியாளர்","பேசவும்"],
-  ur: ["براہ کرم اپنی مسئلہ بتائیں","براہ کرم اپنے گاؤں اور ریاست کا نام بتائیں","براہ کرم اپنا نام بتائیں","شکریہ، آپ کا مسئلہ ریکارڈ کر لیا गया ہے","آپ کا معاون","بولیں"],
+  ur: ["براہ کرم اپنی مسئلہ بتائیں","براہ کرم اپنے گاؤں اور ریاست کا نام بتائیں","براہ کرم اپنا نام بتائیں","شکریہ، آپ کا مسئلہ ریکارڈ کر لیا گیا ہے","آپ کا معاون","بولیں"],
   gu: ["કૃપા કરીને તમારી સમસ્યા કહો","તમારા ગામ અને રાજ્યનું નામ કહો","તમારું નામ કહો","આભાર, તમારી સમસ્યા નોંધાઈ ગઈ છે","તમારો સહાયક","બોલો"],
   bn: ["আপনার সমস্যাটি বলুন","আপনার গ্রাম এবং রাজ্যের নাম বলুন","আপনার নাম বলুন","ধন্যবাদ, আপনার সমস্যাটি রেকর্ড করা হয়েছে","আপনার সহায়ক","বলুন"],
   or: ["ଦୟାକରି ଆପଣଙ୍କର ସମସ୍ୟା କୁ କୁହନ୍ତୁ","ଆପଣଙ୍କ ଗାଁ ଓ ରାଜ୍ୟର ନାମ କୁହନ୍ତୁ","ଆପଣଙ୍କ ନାମ କୁହନ୍ତୁ","ଧନ୍ୟବାଦ, ଆପଣଙ୍କ ସମସ୍ୟା ରେକର୍ଡ ହୋଇଛି","ଆପଣଙ୍କ ସହାୟକ","କୁହନ୍ତୁ"],
   raj: ["कृपया थारी समस्या बतावो","थारो गांव अर राज्य को नाम बोलो","थारो नाम बतावो","धन्यवाद, थारी समस्या रिकॉर्ड कर ली गई है","थारो सहायक","बोलो"]
 };
 
-// =============== FIXED GOOGLE TTS MAP ==================
-const ttsLang = {
-  hi: "hi-IN",
-  bn: "bn-IN",
-  ta: "ta-IN",
-  kn: "kn-IN",
-  gu: "gu-IN",
-  ur: "ur-PK",
-  or: "hi-IN",  // Odia has NO google tts → fallback
-  raj: "hi-IN"   // Rajasthani → fallback
+// =============== LANGUAGE MAPS ===============
+// TTS codes for Google Translate
+const langMapTTS = {
+  hi: "hi", kn: "kn", ta: "ta",
+  ur: "ur", gu: "gu", bn: "bn",
+  or: "or", raj: "hi" // fallback
 };
 
-// =============== Speech Recognition map ================
+// Browser speech recognition codes
 const recogLangMap = {
   hi: "hi-IN", kn: "kn-IN", ta: "ta-IN",
   ur: "ur-PK", gu: "gu-IN", bn: "bn-IN",
@@ -49,17 +45,19 @@ const recogLangMap = {
 let currentLang = "hi";
 let step = 0;
 
-// =============== TTS FUNCTION (FIXED) ==================
+// =============== TTS (GOOGLE TRANSLATE) ====================
 function speak(text, lang, callback = null) {
-  const googleURL =
-    `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${ttsLang[lang]}&client=tw-ob`;
+  const url =
+    `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langMapTTS[lang]}&client=tw-ob`;
 
-  const audio = new Audio(googleURL);
+  const audio = new Audio(url);
   audio.onended = () => callback && callback();
-  audio.play().catch(err => console.error("Audio Error:", err));
+  audio.onerror = () => console.warn("TTS failed:", url);
+
+  audio.play().catch(err => console.error("Audio Play Error:", err));
 }
 
-// =============== SELECT LANGUAGE ==================
+// =============== LANGUAGE SELECT ====================
 window.selectLanguage = (lang) => {
   currentLang = lang;
   step = 0;
@@ -71,7 +69,7 @@ window.selectLanguage = (lang) => {
   speak(prompts[lang][0], lang);
 };
 
-// =============== START SPEECH RECOGNITION ================
+// =============== SPEECH RECOGNITION ====================
 window.startRecognition = () => {
   if (!("webkitSpeechRecognition" in window)) {
     alert("Speech recognition not supported.");
@@ -81,6 +79,7 @@ window.startRecognition = () => {
   const recognition = new webkitSpeechRecognition();
   recognition.lang = recogLangMap[currentLang];
   recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript.trim();
@@ -92,32 +91,37 @@ window.startRecognition = () => {
 
     if (step < 3) {
       document.getElementById("stepText").innerText = prompts[currentLang][step];
-      speak(prompts[currentLang][step], currentLang, () => recognition.start());
+
+      speak(prompts[currentLang][step], currentLang, () => {
+        recognition.start();
+      });
     } else {
       document.getElementById("stepText").innerText = prompts[currentLang][3];
       speak(prompts[currentLang][3], currentLang);
 
       const lines = out.innerText.split("\n");
-      const problem = lines[0];
-      const village = lines[1];
-      const name = lines[2];
+      const problem = lines[0] || "";
+      const village = lines[1] || "";
+      const name = lines[2] || "";
 
       navigator.geolocation.getCurrentPosition(
         pos => sendComplaintToFirebase(
           name, village, problem,
           pos.coords.latitude, pos.coords.longitude
         ),
-        () => alert("Location denied.")
+        () => alert("Location denied. Complaint not recorded.")
       );
 
       step = 0;
     }
   };
 
-  speak(prompts[currentLang][0], currentLang, () => recognition.start());
+  speak(prompts[currentLang][step], currentLang, () => {
+    recognition.start();
+  });
 };
 
-// =============== FIREBASE SUBMIT ==================
+// =============== FIREBASE SUBMIT ====================
 window.sendComplaintToFirebase = async (name, village, problem, lat, long) => {
   try {
     const docRef = await addDoc(collection(db, "complaints"), {
@@ -132,26 +136,32 @@ window.sendComplaintToFirebase = async (name, village, problem, lat, long) => {
   }
 };
 
-// =============== TRACK COMPLAINT ==================
+// =============== TRACK COMPLAINT ====================
 window.trackComplaint = async () => {
   const id = document.getElementById("trackId").value.trim();
   const res = document.getElementById("trackResult");
 
-  if (!id) return alert("Enter ID");
+  if (!id) return alert("Enter Complaint ID");
 
-  const snap = await getDoc(doc(db, "complaints", id));
+  try {
+    const snap = await getDoc(doc(db, "complaints", id));
+    if (!snap.exists()) {
+      res.innerHTML = "❌ Not Found";
+      return;
+    }
 
-  if (!snap.exists()) {
-    res.innerHTML = "❌ Not Found";
-    return;
+    const d = snap.data();
+    const time = d.timestamp?.toDate().toLocaleString() || "Unknown";
+
+    res.innerHTML = `
+      <hr><strong>Complaint Found:</strong><br>
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Village:</strong> ${d.village}<br>
+      <strong>Problem:</strong> ${d.problem}<br>
+      <strong>Status:</strong> ${d.status}<br>
+      <strong>Time:</strong> ${time}
+    `;
+  } catch (e) {
+    res.innerHTML = "❌ Error: " + e.message;
   }
-
-  const data = snap.data();
-  res.innerHTML = `
-    <hr>
-    <strong>Name:</strong> ${data.name}<br>
-    <strong>Village:</strong> ${data.village}<br>
-    <strong>Problem:</strong> ${data.problem}<br>
-    <strong>Status:</strong> ${data.status}
-  `;
 };
