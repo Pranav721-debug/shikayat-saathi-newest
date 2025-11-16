@@ -47,10 +47,12 @@ let step = 0;
 
 // =============== TTS (GOOGLE TRANSLATE) ====================
 function speak(text, lang, callback = null) {
-  const url =
-    `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langMapTTS[lang]}&client=tw-ob`;
+  const ttsLang = langMapTTS[lang];
+
+  const url = `/api/tts?text=${encodeURIComponent(text)}&lang=${ttsLang}`;
 
   const audio = new Audio(url);
+
   audio.onended = () => callback && callback();
   audio.onerror = () => console.warn("TTS failed:", url);
 
@@ -165,3 +167,4 @@ window.trackComplaint = async () => {
     res.innerHTML = "❌ Error: " + e.message;
   }
 };
+
