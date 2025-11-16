@@ -1,85 +1,163 @@
-let selectedLang = "hi";
-let recognition = null;
+// ================= Firebase ==================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// MAP YOUR LANGUAGE CODES TO GOOGLE TTS VOICES
-const voiceMap = {
-  hi: "hi-IN",
-  kn: "kn-IN",
-  ta: "ta-IN",
-  ur: "ur-IN",
-  gu: "gu-IN",
-  bn: "bn-IN",
-  or: "or-IN",
-  raj: "hi-IN" // fallback
+const firebaseConfig = {
+  apiKey: "AIzaSyDJuz23DrqGN3i98yGvEp4uI99l0AED6rY",
+  authDomain: "shikayat-saathi.firebaseapp.com",
+  projectId: "shikayat-saathi",
+  storageBucket: "shikayat-saathi.firebasestorage.app",
+  messagingSenderId: "810869568803",
+  appId: "1:810869568803:web:00400d4b1da0b3b8e14896",
+  measurementId: "G-3QP95L1T7T"
 };
 
-// SELECTED LANGUAGE
-window.selectLanguage = function (lang) {
-  selectedLang = lang;
-  speakText("भाषा चुनी गई", selectedLang);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// =============== PROMPTS ======================
+const prompts = {
+  hi: ["कृपया अपनी समस्या बताएं","कृपया अपने गांव और राज्य का नाम बताएं","कृपया अपना नाम बताएं","धन्यवाद, आपकी समस्या रिकॉर्ड कर ली गई है","आपका सहायक","बोलें"],
+  kn: ["ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ಹೇಳಿ","ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹಳ್ಳಿ ಮತ್ತು ರಾಜ್ಯದ ಹೆಸರನ್ನು ಹೇಳಿ","ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರನ್ನು ಹೇಳಿ","ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ದಾಖಲಿಸಲಾಗಿದೆ","ನಿಮ್ಮ ಸಹಾಯಕ","ಮಾತನಾಡಿ"],
+  ta: ["தயவுசெய்து உங்கள் பிரச்சனையை கூறுங்கள்","தயவுசெய்து உங்கள் கிராமம் மற்றும் மாநிலத்தின் பெயரை கூறுங்கள்","தயவுசெய்து உங்கள் பெயரை கூறுங்கள்","நன்றி, உங்கள் பிரச்சனை பதிவு செய்யப்பட்டுள்ளது","உங்கள் உதவியாளர்","பேசவும்"],
+  ur: ["براہ کرم اپنی مسئلہ بتائیں","براہ کرم اپنے گاؤں اور ریاست کا نام بتائیں","براہ کرم اپنا نام بتائیں","شکریہ، آپ کا مسئلہ ریکارڈ کر لیا گیا ہے","آپ کا معاون","بولیں"],
+  gu: ["કૃપા કરીને તમારી સમસ્યા કહો","તમારા ગામ અને રાજ્યનું નામ કહો","તમારું નામ કહો","આભાર, તમારી સમસ્યા નોંધાઈ ગઈ છે","તમારો સહાયક","બોલો"],
+  bn: ["আপনার সমস্যাটি বলুন","আপনার গ্রাম এবং রাজ্যের নাম বলুন","আপনার নাম বলুন","ধন্যবাদ, আপনার সমস্যাটি রেকর্ড করা হয়েছে","আপনার সহায়ক","বলুন"],
+  or: ["ଦୟାକରି ଆପଣଙ୍କର ସମସ୍ୟା କୁ କୁହନ୍ତୁ","ଆପଣଙ୍କ ଗାଁ ଓ ରାଜ୍ୟର ନାମ କୁହନ୍ତୁ","ଆପଣଙ୍କ ନାମ କୁହନ୍ତୁ","ଧନ୍ୟବାଦ, ଆପଣଙ୍କ ସମସ୍ୟା ରେକର୍ଡ ହୋଇଛି","ଆପଣଙ୍କ ସହାୟକ","କୁହନ୍ତୁ"],
+  raj: ["कृपया थारी समस्या बतावो","थारो गांव अर राज्य को नाम बोलो","थारो नाम बतावो","धन्यवाद, थारी समस्या रिकॉर्ड कर ली गई है","थारो सहायक","बोलो"]
 };
 
-// START SPEECH RECOGNITION
-window.startRecognition = function () {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+// =============== LANGUAGE MAPS ===============
+const langMapTTS = {
+  hi: "hi", kn: "kn", ta: "ta",
+  ur: "ur", gu: "gu", bn: "bn",
+  or: "or", raj: "hi" // fallback
+};
 
-  if (!SpeechRecognition) {
-    alert("Speech recognition not supported on this browser.");
+const recogLangMap = {
+  hi: "hi-IN", kn: "kn-IN", ta: "ta-IN",
+  ur: "ur-PK", gu: "gu-IN", bn: "bn-IN",
+  or: "or-IN", raj: "hi-IN"
+};
+
+let currentLang = "hi";
+let step = 0;
+
+// =============== TTS (GOOGLE TRANSLATE) ====================
+function speak(text, lang, callback = null) {
+  const googleURL =
+    `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langMapTTS[lang]}&client=tw-ob`;
+
+  const audio = new Audio(googleURL);
+  audio.onended = () => callback && callback();
+  audio.play().catch(err => console.error("Audio Play Error:", err));
+}
+
+// =============== LANGUAGE SELECT ====================
+window.selectLanguage = (lang) => {
+  currentLang = lang;
+  step = 0;
+
+  document.getElementById("stepText").innerText = prompts[lang][0];
+  document.getElementById("micButton").innerText = "🎤 " + prompts[lang][5];
+  document.getElementById("slogan").innerText = prompts[lang][4];
+
+  speak(prompts[lang][0], lang);
+};
+
+// =============== SPEECH RECOGNITION ====================
+window.startRecognition = () => {
+  if (!("webkitSpeechRecognition" in window)) {
+    alert("Speech recognition not supported.");
     return;
   }
 
-  recognition = new SpeechRecognition();
-  recognition.lang = selectedLang;
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = recogLangMap[currentLang];
   recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
 
-  recognition.onresult = (e) => {
-    const text = e.results[0][0].transcript;
-    document.getElementById("resultText").textContent = text;
-    speakText("संदेश प्राप्त हुआ", selectedLang);
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    const out = document.getElementById("resultText");
+
+    out.innerText += (out.innerText ? "\n" : "") + transcript;
+
+    step++;
+
+    if (step < 3) {
+      document.getElementById("stepText").innerText = prompts[currentLang][step];
+
+      speak(prompts[currentLang][step], currentLang, () => {
+        recognition.start();
+      });
+    } else {
+      document.getElementById("stepText").innerText = prompts[currentLang][3];
+      speak(prompts[currentLang][3], currentLang);
+
+      const lines = out.innerText.split("\n");
+      const problem = lines[0] || "";
+      const village = lines[1] || "";
+      const name = lines[2] || "";
+
+      navigator.geolocation.getCurrentPosition(
+        pos => sendComplaintToFirebase(
+          name, village, problem,
+          pos.coords.latitude, pos.coords.longitude
+        ),
+        () => alert("Location denied. Complaint not recorded.")
+      );
+
+      step = 0;
+    }
   };
 
-  recognition.start();
+  speak(prompts[currentLang][step], currentLang, () => {
+    recognition.start();
+  });
 };
 
-// GENERATE GOOGLE TRANSLATE TTS AUDIO URL
-function getTTSUrl(text, lang) {
-  const googleLang = voiceMap[lang] || "hi-IN";
-
-  return (
-    "https://translate.google.com/translate_tts?" +
-    new URLSearchParams({
-      ie: "UTF-8",
-      q: text,
-      tl: googleLang,
-      client: "tw-ob"
-    })
-  );
-}
-
-// SPEAK TEXT
-function speakText(text, lang) {
-  const ttsUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${voiceMap[lang]}`;
-
-  const audio = new Audio(ttsUrl);
-  audio.play().catch(err => console.log("TTS Error:", err));
-}
-
-
-// TRACK COMPLAINT
-window.trackComplaint = function () {
-  const id = document.getElementById("trackId").value.trim();
-
-  if (!id) {
-    speakText("कृपया शिकायत आईडी दर्ज करें", selectedLang);
-    document.getElementById("trackResult").textContent =
-      "Please enter a complaint ID.";
-    return;
+// =============== FIREBASE SUBMIT ====================
+window.sendComplaintToFirebase = async (name, village, problem, lat, long) => {
+  try {
+    const docRef = await addDoc(collection(db, "complaints"), {
+      name, village, problem,
+      status: "Received",
+      location: { latitude: lat, longitude: long },
+      timestamp: new Date()
+    });
+    alert(`✔ Complaint Registered!\nID: ${docRef.id}`);
+  } catch (e) {
+    alert("Error: " + e.message);
   }
-
-  document.getElementById("trackResult").textContent =
-    "Your complaint ID " + id + " is being processed.";
-
-  speakText("आपकी शिकायत प्रक्रिया में है", selectedLang);
 };
 
+// =============== TRACK COMPLAINT ====================
+window.trackComplaint = async () => {
+  const id = document.getElementById("trackId").value.trim();
+  const res = document.getElementById("trackResult");
+
+  if (!id) return alert("Enter Complaint ID");
+
+  try {
+    const snap = await getDoc(doc(db, "complaints", id));
+    if (!snap.exists()) {
+      res.innerHTML = "❌ Not Found";
+      return;
+    }
+
+    const d = snap.data();
+    const time = d.timestamp?.toDate().toLocaleString() || "Unknown";
+
+    res.innerHTML = `
+      <hr><strong>Complaint Found:</strong><br>
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Village:</strong> ${d.village}<br>
+      <strong>Problem:</strong> ${d.problem}<br>
+      <strong>Status:</strong> ${d.status}<br>
+      <strong>Time:</strong> ${time}
+    `;
+  } catch (e) {
+    res.innerHTML = "❌ Error: " + e.message;
+  }
+};
